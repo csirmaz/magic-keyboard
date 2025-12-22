@@ -19,6 +19,6 @@ if(count($row) == 0) { # no results
     exit(0);
 }
 $DB->exec("delete from commands where rowid = ?", [$row['rowid']]);
-print("COMMAND,");
+print("COMMAND");
 print($row['command']);
 ?>

@@ -11,13 +11,12 @@ char serverAddress[] = "192.168.100.100";
 const int serverPort = 80;
 char url[] = "/URLPATH/magic-keyboard/command.php?device=0";
 const int loopDelay = 3000;
-const int typeDelay = 10;
-const int typeSlashDelay = 500;
+const int typeDelay = 40;
 
 
 void sleepme(char c) {
   // Sleep for a given period
-  if(c == 'S') { delay(2); return; }
+  if(c == 'S') { delay(4); return; }
   if(c == 's') { delay(200); return; }
   if(c == 'm') { delay(500); return; }
   if(c == 'l') { delay(1000); return; }
@@ -37,41 +36,57 @@ void blinkme(String pattern) {
 }
 
 // https://docs.arduino.cc/language-reference/en/functions/usb/Keyboard/
+// https://docs.arduino.cc/language-reference/en/functions/usb/Keyboard/keyboardModifiers/
+// https://github.com/arduino-libraries/Keyboard/blob/master/src/KeyboardLayout_en_US.cpp
+// The first character defines a "no-print" character that can be used for delays
+// The second character defines a "newline" character
 void typeme(String s, int offset) {
-  for(int i=offset; i<s.length(); i++) {
+  if(s.length() < offset + 2) { blinkme("lssl"); return; }
+  const char noprint = s.charAt(offset);
+  const char newline = s.charAt(offset+1);
+  for(int i=offset+2; i<s.length(); i++) {
     const char c = s.charAt(i);
-    Keyboard.print(c);
-    delay(c == '/' ? typeSlashDelay : typeDelay);
+    if(c == newline) { Keyboard.println(""); }
+    else if(c != noprint) { Keyboard.write(c); }
+    delay(typeDelay);
   }
-  Keyboard.println("");
-  delay(typeDelay);
 }
 
 WiFiClient wifi_client;
 HttpClient http_client = HttpClient(wifi_client, serverAddress, serverPort);
 
-void setup() {
-  // put your setup code here, to run once:
-  pinMode(LED_BUILTIN, OUTPUT); // initialize as output pin
-
+void wifiConnect() {
   int wifiStatus = WL_IDLE_STATUS;
   blinkme("sl");
   while (wifiStatus != WL_CONNECTED) {
     // Connect to WPA/WPA2 network:
     wifiStatus = WiFi.begin(ssid, pass);
     // wait N seconds for connection:
-    delay(8000);
+    delay(5000);
   }
   blinkme("sss");
-  Keyboard.begin();
-  // TODO Reconnect if wifi lost
-  // https://docs.arduino.cc/language-reference/en/functions/wifi/wificlass/#wifistatus
+}
+
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(LED_BUILTIN, OUTPUT); // initialize as output pin
+  wifiConnect();
+  Keyboard.begin(KeyboardLayout_en_US);
 }
 
 
 
 void loop() {
   // put your main code here, to run repeatedly:
+
+  // https://docs.arduino.cc/language-reference/en/functions/wifi/wificlass/#wifistatus
+  if(WiFi.status() != WL_CONNECTED) {
+    blinkme("ssll");
+    WiFi.disconnect();
+    wifiConnect();
+  }
+
+  http_client.setHttpResponseTimeout(8000);
   http_client.get(url);
   int statusCode = http_client.responseStatusCode();
   String response = http_client.responseBody();
@@ -79,8 +94,8 @@ void loop() {
     if(response.startsWith("NOTHING")) {
       blinkme("S");
     }
-    else if(response.startsWith("COMMAND,")) {
-      typeme(response, 8);
+    else if(response.startsWith("COMMAND")) {
+      typeme(response, 7);
       blinkme("sl");
     }
     else {
@@ -94,7 +109,6 @@ void loop() {
   delay(loopDelay);
 }
 
+
 // https://docs.arduino.cc/hardware/nano-33-iot/
 // https://docs.arduino.cc/tutorials/nano-33-iot/wifi-connection/
-
-
