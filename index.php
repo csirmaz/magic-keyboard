@@ -88,11 +88,11 @@ Search flat world<br>
     // Send minecraft command (bedrock, playstation)
     function sendmc(commands) {
         let after_slash = '';
-        for(let i=0;i<6;i++) {
+        for(let i=0;i<5;i++) {
             after_slash += '``````````';
         }
         let btw_cmd = '';
-        for(let i=0;i<20;i++) {
+        for(let i=0;i<12;i++) {
             btw_cmd += '``````````';
         }
         let o = '`~'; // First character is noprint/delay, second is ENTER
@@ -100,6 +100,12 @@ Search flat world<br>
             if(i>0) { o += btw_cmd; }
             
             let cmd = commands[i];
+            
+            //safety
+            if(cmd.search(/^\s*fill/) != -1) {
+                if(!confirm("Are you sure?")) { return; }
+            }
+            
             // PS recognizes the keyboard as a UK keyboard, so we make some substitutions
             cmd = cmd.replaceAll('`', '`b');
             cmd = cmd.replaceAll('~', '`t');
