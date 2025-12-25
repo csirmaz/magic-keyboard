@@ -13,6 +13,10 @@ $DB->exec("create table if not exists commands (command string, device int)");
 
 // Handle API requests
 if(isset($_POST['device'])) {
+    
+    $row = $DB->querysinglerow("select count(*) as cc from commands where device = ?", [$device]);
+    if($row['cc'] >= 3) { print("toomany"); exit(0); }
+    
     $device = $_POST['device'];
     $command = $_POST['command'];
     $DB->exec("insert into commands (command, device) values (?,?)", [$command, $device]);
@@ -35,7 +39,7 @@ $device = isset($_GET['device']) ? intval($_GET['device']) : 0;
             padding: .5em;
             line-height: 2em;
             font-family: Hevetica, Arial, monospace;
-            letter-spacing:5px;
+            letter-spacing:3px;
         }
         .entry input {
             padding: .3em;
@@ -57,7 +61,8 @@ $device = isset($_GET['device']) ? intval($_GET['device']) : 0;
 
 <div class="entry">
     <textarea rows=2 cols=100 id="entry<?php echo $i?>"></textarea><br>
-    <input class="cmdsend" data-cnum="<?php echo $i?>" type="submit" value="Send #<?php echo $i?>">
+    <input class="cmdsend" data-cnum="<?php echo $i?>" type="submit" value="Send #<?php echo $i?>"> &nbsp; &nbsp;
+    <input class="cmdsend2" data-cnum="<?php echo $i?>" type="submit" value="Send no line #<?php echo $i?>"> &nbsp; &nbsp;
 </div>
 
 <?php
@@ -86,9 +91,9 @@ Search flat world<br>
     }
     
     // Send minecraft command (bedrock, playstation)
-    function sendmc(commands) {
+    function sendmc(commands, nonewline) {
         let after_slash = '';
-        for(let i=0;i<5;i++) {
+        for(let i=0;i<3;i++) {
             after_slash += '``````````';
         }
         let btw_cmd = '';
@@ -118,7 +123,7 @@ Search flat world<br>
             cmd = cmd.replaceAll('`b', '`');
             
             
-            o += '/'+after_slash+'~'+after_slash+cmd+'~';
+            o += '/'+after_slash+'~'+after_slash+cmd+(nonewline?'':'~');
         }
         $('#search_dbg').html(o);
         sendcmd(o);
@@ -134,14 +139,23 @@ Search flat world<br>
             sendmc([cmd]);
             return false;
         });
+
+        $('.cmdsend2').on('click', function(e) {
+            e.preventDefault();
+            let cnum = $(this).data('cnum');
+            let cmd = $('#entry'+cnum).val();
+            cmd = cmd.replaceAll("\n", " ");
+            sendmc([cmd], true);
+            return false;
+        });
         
         // Flat world search logic, going in circles
         const position_offset = 15;
         const horiz_field = 120; // TODO check
         const depth_limit = 140;
         const depth_facing = 40;
-        const pos_height = -3; // actual Y coordinate; ground is at -60
-        const pos_floor = -60;
+        const pos_height =120; // -3; // actual Y coordinate; ground is at -60
+        const pos_floor = 60; // -60;
         
         let depth_ix = 0;
         let around_ix = 0;
@@ -178,7 +192,7 @@ Search flat world<br>
                 Math.round(anglesin*(radius+depth_facing))
             ];
             
-            sendmc(['weather clear', 'tp '+(pos.join(' '))+' facing '+(facing.join(' '))]);
+            sendmc(['tp '+(pos.join(' '))+' facing '+(facing.join(' '))]);
             
             // next steps
             around_ix++;
